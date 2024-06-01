@@ -1,10 +1,12 @@
+# SNS.py
 import streamlit as st
-import sqlite3
 from streamlit_option_menu import option_menu
 from datetime import datetime
+from db_utils import get_connection, init_db
 
-# 동일한 데이터베이스에 연결
-conn = sqlite3.connect('data.db', check_same_thread=False)
+# Initialize SQLite database
+init_db()
+conn = get_connection()
 c = conn.cursor()
 
 # 데이터베이스 함수 확장
@@ -14,9 +16,12 @@ def create_tables():
     conn.commit()
 
 def add_post(username, image, post, is_public):
-    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    c.execute('INSERT INTO poststable(username, image, post, timestamp, is_public) VALUES (?,?,?,?,?)', (username, image, post, timestamp, is_public))
-    conn.commit()
+    try:
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        c.execute('INSERT INTO poststable(username, image, post, timestamp, is_public) VALUES (?,?,?,?,?)', (username, image, post, timestamp, is_public))
+        conn.commit()
+    except sqlite3.Error as e:
+        st.error(f"An error occurred: {e}")
 
 def view_all_posts():
     c.execute('SELECT rowid, username, image, post, timestamp FROM poststable WHERE is_public = 1')
@@ -24,7 +29,7 @@ def view_all_posts():
     return data
 
 def view_my_posts(user, is_public):
-    c.execute('SELECT rowid, username, image, post, timestamp FROM poststable WHERE username = ? AND is_public = ?', (user, is_public))
+    c.execute('SELECT rowid, username, image, post, timestamp, is_public FROM poststable WHERE username = ? AND is_public = ?', (user, is_public))
     data = c.fetchall()
     return data
 
@@ -43,12 +48,18 @@ def upgrade_post_table():
             raise e
 
 def like_post(post_id, username):
-    c.execute('INSERT INTO likestable(post_id, username) VALUES (?,?)', (post_id, username))
-    conn.commit()
+    try:
+        c.execute('INSERT INTO likestable(post_id, username) VALUES (?,?)', (post_id, username))
+        conn.commit()
+    except sqlite3.Error as e:
+        st.error(f"An error occurred: {e}")
 
 def unlike_post(post_id, username):
-    c.execute('DELETE FROM likestable WHERE post_id = ? AND username = ?', (post_id, username))
-    conn.commit()
+    try:
+        c.execute('DELETE FROM likestable WHERE post_id = ? AND username = ?', (post_id, username))
+        conn.commit()
+    except sqlite3.Error as e:
+        st.error(f"An error occurred: {e}")
 
 def get_like_count(post_id):
     c.execute('SELECT COUNT(*) FROM likestable WHERE post_id = ?', (post_id,))
@@ -74,16 +85,16 @@ def view(posts):
         if liked:
             if st.button(f"좋아요 취소 ({like_count})", key=f"unlike_{post_id}"):
                 unlike_post(post_id, user)
-                st.experimental_rerun()
+                st.rerun()
         else:
             if st.button(f"좋아요 ({like_count})", key=f"like_{post_id}"):
                 like_post(post_id, user)
-                st.experimental_rerun()
+                st.rerun()
 
         st.markdown("---")
 
 def viewmy(posts):
-    for post_id, username, image, post, timestamp in reversed(posts):  # 최신 게시물부터 표시하기 위해 reversed 사용
+    for post_id, username, image, post, timestamp, is_public in reversed(posts):  # 최신 게시물부터 표시하기 위해 reversed 사용
         st.markdown(f"**{username}**")
         if image:
             st.image(image, caption=username, use_column_width=True)
@@ -92,11 +103,11 @@ def viewmy(posts):
         col1, col2 = st.columns([1, 1])
         with col1:
             if st.button("수정", key=f"edit_post_{post_id}"):
-                edit_posts, edit_image, edit_timestamp, edit_ispublic = edit_post(post_id, image, post, timestamp)
+                edit_posts, edit_image, edit_timestamp, edit_ispublic = edit_post(post_id, image, post, timestamp, is_public)
         with col2:
             if st.button("삭제", key=f"delete_post_{post_id}"):
                 delete_post(post_id)
-                st.experimental_rerun()
+                st.rerun()
         
         like_count = get_like_count(post_id)
         liked = has_liked(post_id, user)
@@ -104,19 +115,19 @@ def viewmy(posts):
         if liked:
             if st.button(f"좋아요 취소 ({like_count})", key=f"unlike_my_{post_id}"):
                 unlike_post(post_id, user)
-                st.experimental_rerun()
+                st.rerun()
         else:
             if st.button(f"좋아요 ({like_count})", key=f"like_my_{post_id}"):
                 like_post(post_id, user)
-                st.experimental_rerun()
+                st.rerun()
 
         st.markdown(f'<p style="text-align: right;">{timestamp}</p>', unsafe_allow_html=True)
         st.markdown("---")
 
-def edit_post(post_id, image, post, timestamp):
+def edit_post(post_id, image, post, timestamp, is_public):
     edited_image = None
-    edited_post = st.text_area("게시물 수정", key=f"edit2_post_{post_id}")
-    edited_is_public = st.checkbox("전체 공개로 수정", key=f"edit_public_post_{post_id}")
+    edited_post = st.text_area("게시물 수정", value=post, key=f"edit2_post_{post_id}")
+    edited_is_public = st.checkbox("전체 공개로 수정", value=bool(is_public), key=f"edit_public_post_{post_id}")
     
     if image:
         edited_image = st.file_uploader("이미지를 수정하세요.", type=['png', 'jpg', 'jpeg'], 
@@ -129,7 +140,7 @@ def edit_post(post_id, image, post, timestamp):
         new_is_public = 1 if edited_is_public else 0
         update_post(post_id, new_post, new_is_public)
         st.success("게시물이 성공적으로 수정되었습니다.")
-        st.experimental_rerun()
+        st.rerun()
     return post, image, timestamp, is_public
 
 def update_post(post_id, new_post, new_is_public):
@@ -137,9 +148,12 @@ def update_post(post_id, new_post, new_is_public):
     conn.commit()
 
 def delete_post(post_id):
-    c.execute('DELETE FROM poststable WHERE rowid=?', (post_id,))
-    conn.commit()
-    st.success("게시물이 성공적으로 삭제되었습니다.")
+    try:
+        c.execute('DELETE FROM poststable WHERE rowid=?', (post_id,))
+        conn.commit()
+        st.success("게시물이 성공적으로 삭제되었습니다.")
+    except sqlite3.Error as e:
+        st.error(f"An error occurred: {e}")
 
 def main():
     st.title("육아 SNS")
