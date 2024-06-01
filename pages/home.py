@@ -1,41 +1,24 @@
+# home.py
 import base64
 import streamlit as st
 from streamlit_option_menu import option_menu
 import os
 
-# Define and apply custom fonts using @font-face
 st.markdown(
     """
     <style>
-    @font-face {
-        font-family: 'NanumPen';
-        src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2101@1.0/NanumPen.woff') format('woff');
-        font-weight: normal;
-        font-style: normal;
-    }
-
-    @font-face {
-        font-family: 'NanumGothic';
-        src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2104@1.0/NanumGothic.woff') format('woff');
-        font-weight: normal;
-        font-style: normal;
-    }
+    @import url('https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&family=Nanum+Gothic:wght@400;700&display=swap');
 
     .title-font {
-        font-family: 'NanumPen', sans-serif;
-        font-size: 24px;
-        font-weight: bold;
+        font-family: 'Nanum Pen Script', cursive;
     }
 
     .body-font {
-        font-family: 'NanumGothic', sans-serif;
-        font-size: 18px;
-        font-weight: 500;
-        color: #091747;
+        font-family: 'Nanum Gothic', sans-serif;
     }
 
     .stApp {
-        background: #FEF9F0;
+        background: #F1E2DD;
     }
     .Container {
         width: 710px;
@@ -66,6 +49,7 @@ st.markdown(
         font-size: 60px;
         font-weight: bold;
         color: white;
+        font-family: 'Nanum Pen Script', cursive;
     }
     .logo-below {
         position: absolute; /* 위치 고정 */
@@ -86,6 +70,7 @@ st.markdown(
         font-size: 40px;
         font-weight: 400px;
         color: white;
+        font-family: 'Nanum Pen Script', cursive;
     }
     .mainContainer {
         display: flex;
@@ -103,17 +88,19 @@ st.markdown(
         font-size: 20px;
         margin-top: 20px;
         margin-bottom: 30px;
+        color: black;
+        font-family: 'Nanum Pen Script', cursive;
     }
     .aboutUsContent {
         text-align: center;
-        margin-bottom: 35px;
+        margin: 15px 0px;
         font-size: 17px;
+        font-family: 'Nanum Gothic', sans-serif;
     }
     .divider {
         width: 250px;
-        height: 2px;
+        height: 1px;
         background-color: black;
-        margin-bottom: 55px;
     }
     .serviceComponent {
         position: relative;
@@ -152,10 +139,11 @@ st.markdown(
         font-weight: bold;
         color: black;
         line-height: 1.2;
+        font-family: 'Nanum Pen Script', cursive;
     }
     .serviceDetail {
         color: black;
-        font-weight: 800;
+        font-weight: 800px;
         margin-left: 30px;
         position: relative;
         font-size: 16px;
@@ -163,6 +151,7 @@ st.markdown(
         line-height: 1.4;
         width: 240px;
         height: 50px;
+        font-family: 'Nanum Gothic', sans-serif;
     }
     .imgContainer {
         width: 302px;
@@ -179,6 +168,7 @@ st.markdown(
     .contact {
         margin: 0px 12px;
         font-size: 10px;
+        font-family: 'Nanum Gothic', sans-serif;
     }
     </style>
     """,
@@ -212,7 +202,7 @@ if homeImg:
                 <img src="data:image/jpg;base64,{homeImg}" />
                 <div class="textContainer">
                     <div class="logo title-font">MomE</div>
-                    <div class="logo-below">Always here for you</div>
+                    <div class="logo-below body-font">Always here for you</div>
                 </div>
                 <div class="adText title-font">We Care<br>Your Mind</div>
             </div>
@@ -233,6 +223,11 @@ if homeImg:
         </div>
     ''', unsafe_allow_html=True)
 
+    st.write('')
+    st.write('')
+    st.write('')
+    st.write('')
+
     row1, row2 = st.columns(2)
 
     with row1:
@@ -242,7 +237,7 @@ if homeImg:
                     <div class="titleBar"></div>
                     <div class="title title-font"> 육아 일기장<br>서비스</div>
                 </div>
-                <div class="serviceDetail"> 
+                <div class="serviceDetail">
                     산모가 육아 일기를 작성하며
                     자신의 마음도 함께 돌아볼 수 있는
                     서비스를 제공합니다.<br><br>
@@ -338,7 +333,7 @@ if homeImg:
                     에딘버러 산후우울증 척도<br>
                     K-EPDS를 이용하여 산후 우울증<br>
                     자가진단 및 시각화 데이터를<br>
-                    제공합니다. 
+                    제공합니다.
                 </div>
             </div>
             """,
@@ -376,7 +371,7 @@ with st.sidebar:
         st.switch_page('pages/SNS2.py')
     elif menu == 'To do list':
         st.switch_page('pages/daily_schedule.py')
-    elif menu == '하루 자가진단': 
+    elif menu == '하루 자가진단':
         st.switch_page('pages/self_diagnosis.py')
     elif menu == 'LogOut':
         st.switch_page('dd1.py')
