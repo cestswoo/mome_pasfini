@@ -22,13 +22,13 @@ st.markdown(
     }
     .Container {
         width: 710px;
-        width: 100%; /* 부모 컨테이너 너비 */
-        height: 100vh; /* 부모 컨테이너 높이 */
+        width: 100%;
+        height: 100vh;
         overflow: hidden;
         border-radius: 30px;
     }
     .homeImg {
-        position: relative; /* 내부 요소 고정 */
+        position: relative;
         width: 707px;
         height: 471px;
         border-radius: 30px;
@@ -52,7 +52,7 @@ st.markdown(
         font-family: 'Nanum Pen Script', cursive;
     }
     .logo-below {
-        position: absolute; /* 위치 고정 */
+        position: absolute;
         top: 80%;
         left: 1%;
         width: 120px;
@@ -61,7 +61,7 @@ st.markdown(
         color: white;
     }
     .adText {
-        position: absolute; /* 위치 고정 */
+        position: absolute;
         top: 28%;
         left: 30%;
         transform: translateX(-50%);
@@ -122,7 +122,7 @@ st.markdown(
         height: 56px;
         display: flex;
         flex-direction: row;
-        align-items: center;
+        align-items: center.
     }
     .titleBar {
         position: relative;
@@ -139,11 +139,11 @@ st.markdown(
         font-weight: bold;
         color: black;
         line-height: 1.2;
-        font-family: 'Nanum Pen Script', cursive;
+        font-family: 'Nanum Pen Script', cursive.
     }
     .serviceDetail {
         color: black;
-        font-weight: 800px;
+        font-weight: 800;
         margin-left: 30px;
         position: relative;
         font-size: 16px;
@@ -151,24 +151,24 @@ st.markdown(
         line-height: 1.4;
         width: 240px;
         height: 50px;
-        font-family: 'Nanum Gothic', sans-serif;
+        font-family: 'Nanum Gothic', sans-serif.
     }
     .imgContainer {
         width: 302px;
         height: 420px;
         margin-left: 25px;
-        margin-bottom: 20px;
+        margin-bottom: 20px.
     }
     .copyRightDivider {
         width: 600px;
         height: 1.7px;
         background-color: black;
-        margin-bottom: 55px;
+        margin-bottom: 55px.
     }
     .contact {
         margin: 0px 12px;
         font-size: 10px;
-        font-family: 'Nanum Gothic', sans-serif;
+        font-family: 'Nanum Gothic', sans-serif.
     }
     </style>
     """,
@@ -342,7 +342,6 @@ if homeImg:
 
     st.divider()
 
-    # 문의 및 저작권 표시
     st.markdown("""
         <div class="contact body-font">
             MomE ｜ 주소 경기도 용인시 처인구 외대로 81 한국외국어대학교 ｜ 이메일 susu492@naver.com<br>
@@ -352,7 +351,6 @@ if homeImg:
 else:
     st.error("Failed to load the home image.")
 
-# Sidebar menu
 with st.sidebar:
     menu = option_menu("MomE", ['Home', 'Dashboard', 'Diary', '육아 SNS', 'To do list', '하루 자가진단', 'LogOut'],
                         icons=['bi bi-house-fill', 'bi bi-grid-1x2-fill', 'book-half', 'Bi bi-star-fill', 'Bi bi-calendar-check', 'bi bi-capsule-pill', 'box-arrow-in-right'],
@@ -362,7 +360,6 @@ with st.sidebar:
                             "title": {"font-weight": "bold"}
                         })
 
-    # Page navigation
     if menu == 'Dashboard':
         st.switch_page("pages/dashboard_page.py")
     elif menu == 'Diary':
