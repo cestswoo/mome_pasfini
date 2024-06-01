@@ -9,12 +9,6 @@ from streamlit_option_menu import option_menu
 import plotly.express as px
 from db_utils import get_connection, init_db
 
-# Initialize SQLite database
-init_db()
-conn = get_connection()
-c = conn.cursor()
-
-# 모델과 토크나이저 로드
 model_name = 'nlptown/bert-base-multilingual-uncased-sentiment'
 model_dir = "./models"
 
@@ -26,7 +20,6 @@ def load_model_and_tokenizer():
 
 tokenizer, model = load_model_and_tokenizer()
 
-# SentiWord_Dict.txt 파일 로드 함수
 def load_sentiword_dict(file_path):
     senti_dict = {}
     with open(file_path, 'r', encoding='utf-8') as file:
@@ -39,14 +32,12 @@ def load_sentiword_dict(file_path):
 
 sentiword_dict = load_sentiword_dict('pages/SentiWord_Dict.txt')
 
-# BERT를 사용한 감성 분석 함수
 def analyze_sentiment_bert(text):
     inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True, max_length=512)
     outputs = model(**inputs)
     probs = torch.nn.functional.softmax(outputs.logits, dim=-1)
     return probs.detach().numpy()[0]
 
-# 감성 점수 해석 및 메시지 반환 함수
 def interpret_sentiment(probabilities):
     sentiments = ['매우 부정적', '부정적', '중립', '긍정적', '매우 긍정적']
     sentiment_probs = dict(zip(sentiments, probabilities))
@@ -60,10 +51,8 @@ def interpret_sentiment(probabilities):
         '매우 긍정적': ['정말 멋진 하루를 보내셨겠네요! 이런 순간이 계속 이어지길 바랄게요.', '최고의 하루를 보내셨군요! 이 기쁨이 더 오래 이어지길 기대할게요.', '놀라운 하루를 보내셨군요! 이런 순간이 더 자주 찾아오길 기대할게요.']
     }
 
-    random_message = random.choice(messages[max_sentiment])
-    return sentiment_probs, random_message
+    return sentiment_probs, random.choice(messages[max_sentiment])
 
-# SentiWord_Dict.txt를 사용하여 일기에서 단어 찾기 함수
 def find_sentiwords(text, senti_dict):
     found_words = []
     for word in text.split():
@@ -71,7 +60,6 @@ def find_sentiwords(text, senti_dict):
             found_words.append((word, senti_dict[word]))
     return found_words
 
-# 주제 리스트 정의
 topics = [
     '일주일 중 가장 기억에 남는 순간에 대해 써 보세요.', '여태까지 당연시해 왔지만 사실 숨겨져 있었던 재능이 있다면 무엇일까요?', '친구들이 놀랄 만한 나의 좋은 점은 무엇인가요?',
     '최근 경험한 것 중 가장 좋았거나 경외심을 불러일으켰던 순간은 무엇인가요?', '최근의 일들을 되돌아 보고 이번 주에 즐거움을 준 것에 대해 적어보세요.',
@@ -86,218 +74,218 @@ topics = [
     '아기를 돌보는 중에도 나만을 위한 시간을 가졌던 순간을 적어보세요.', '하루 일과를 정리해보고, 그 중에서 좋았던 부분들을 적어보세요.', '마음 챙김이나 명상을 하며 느꼈던 평온한 감정을 기록 해보세요'
 ]
 
-# 주제 추천 함수
 def recommend_topics(topics, num=6):
     return random.sample(topics, num)
 
-# SQLite 데이터베이스에 일기 데이터를 저장하는 함수
 def save_diary_to_db(username, date, diary, sentiment, message):
     try:
-        c.execute('''
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
             INSERT INTO diary (username, date, diary, sentiment, message)
             VALUES (?, ?, ?, ?, ?)
         ''', (username, date, diary, str(sentiment), message))
         conn.commit()
     except sqlite3.OperationalError as e:
         st.error(f"An error occurred while saving the diary: {e}")
+    finally:
+        conn.close()
 
-# SQLite 데이터베이스에서 특정 사용자의 일기 데이터를 불러오는 함수
 def load_diary_data(username):
-    c.execute('SELECT date, diary, sentiment, message FROM diary WHERE username = ?', (username,))
-    rows = c.fetchall()
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute('SELECT date, diary, sentiment, message FROM diary WHERE username = ?', (username,))
+        rows = cursor.fetchall()
+    except sqlite3.OperationalError as e:
+        st.error(f"An error occurred while loading the diary: {e}")
+        rows = []
+    conn.close()
     return pd.DataFrame(rows, columns=['Date', 'Diary', 'Sentiment', 'Message'])
 
-# Streamlit 앱 메인 함수
-def main():
-    # SQLite 데이터베이스 초기화
-    init_db()
-
-    # CSS 스타일 추가
-    st.markdown(
-        """
-        <style>
-        body {
-            background-color: #FFFFFF;
-            color: #000000;
-            font-family: 'Helvetica', sans-serif;
+st.markdown(
+    """
+    <style>
+    body {
+        background-color: #FFFFFF;
+        color: #000000;
+        font-family: 'Helvetica', sans-serif;
+    }
+    .stApp{
+        background: #F1E2DD;
         }
-        .stApp{
-            background: #F1E2DD;
-            }
-            /* Customize tab content background */
         .stTabs [role="tabpanel"] {
-            background-color: #ffffff; /* Change this to your desired content background color */
-            border-top: none;
-            padding: 20px;
-            border-radius: 0 0 10px 10px;
-            box-shadow: 5px 5px 5px #DFDCD5;
-            height: 750px;
-            }
-        .reportview-container .main .block-container {
-            max-width: 80%;
-            margin: auto;
-            padding: 2rem;
+        background-color: #ffffff; 
+        border-top: none;
+        padding: 20px;
+        border-radius: 0 0 10px 10px;
+        box-shadow: 5px 5px 5px #DFDCD5;
+        height: 750px;
         }
-        .stTextArea textarea {
-            height: 300px !important;
-            font-size: 16px;
-        }
-        .stButton button {
-            background-color: #FEF8F6;
-            color: black;
-            border: none;
-            border-radius: 12px;
-            padding: 10px 24px;
-            text-align: center;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 16px;
-            margin: 4px 2px;
-            cursor: pointer;
-        }
-        .stButton button:hover {
-            background-color: #FFEEEE;
-        }
-        .stDataFrame {
-            font-size: 16px;
-        }
-        .topic-card{
-            background-color: #FEF8F6;
-            font-weight: normal;
-            box-shadow: 5px 5px 5px #DFDCD5;
-            margin:5px;
-            border-radius: 10px;
-            padding: 7px;}
-        }
-        .stMarkdown h1 {
-            font-size: 24px;
-        }
-        .title{
-            font-size: 60px;
-            font-weight: bold;
-            text-align: start;
-            width: 50px;
-            line-height: 1;
-            letter-spacing: 0;
-            color: #4A4A4A;
-        }
-        .subtitle{
-            font-size: 25px;
-            font-weight:bold;
-            text-align: start;
-            line-height: 1;
-            letter-spacing: 0;
-            margin-bottom: 10px;
-            color: #4A4A4A;
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .topic{
-            margin: 7px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-        }
+    .reportview-container .main .block-container {
+        max-width: 80%;
+        margin: auto;
+        padding: 2rem;
+    }
+    .stTextArea textarea {
+        height: 300px !important;
+        font-size: 16px;
+    }
+    .stButton button {
+        background-color: #FEF8F6;
+        color: black;
+        border: none;
+        border-radius: 12px;
+        padding: 10px 24px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 16px;
+        margin: 4px 2px;
+        cursor: pointer;
+    }
+    .stButton button:hover {
+        background-color: #FFEEEE;
+    }
+    .stDataFrame {
+        font-size: 16px;
+    }
+    .topic-card{
+        background-color: #FEF8F6;
+        font-weight: normal;
+        box-shadow: 5px 5px 5px #DFDCD5;
+        margin:5px;
+        border-radius: 10px;
+        padding: 7px;}
+    }
+    .stMarkdown h1 {
+        font-size: 24px;
+    }
+    .title{
+        font-size: 60px;
+        font-weight: bold;
+        text-align: start;
+        width: 50px;
+        line-height: 1;
+        letter-spacing: 0;
+        color: #4A4A4A;
+    }
+    .subtitle{
+        font-size: 25px;
+        font-weight:bold;
+        text-align: start;
+        line-height: 1;
+        letter-spacing: 0;
+        margin-bottom: 10px;
+        color: #4A4A4A;
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    .topic{
+        margin: 7px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
 
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
-    if 'logged_in' in st.session_state and st.session_state['logged_in']:
-        st.image('media/diaryTitleImg.jpg')
+if 'logged_in' in st.session_state and st.session_state['logged_in']:
+    st.image('media/diaryTitleImg.jpg')
+    
+    tabs = st.tabs(["일기 작성", "분석 결과", "지난 일기"])
+
+    with tabs[0]:
+        st.markdown(
+            '''
+              <div class="subtitle">일기 주제 추천</div>
+    
+            ''',unsafe_allow_html=True
+        )   
+        recommended_topics = recommend_topics(topics, num=6)
+
+        topic_cols = st.columns(2)
+
+        for idx, topic in enumerate(recommended_topics):
+            with topic_cols[idx % 2]:
+                st.markdown(f'''<div class='topic-card'>
+                                    <div class='topic'>
+                                        {topic}
+                                    </div>
+                            </div>''', unsafe_allow_html=True) 
+        st.write("")
+
+        user_input = st.text_area('',placeholder="여기에 일기를 작성해 주세요.", height=300)
         
-        tabs = st.tabs(["일기 작성", "분석 결과", "지난 일기"])
+        if st.button("분석하기"):
+            probabilities = analyze_sentiment_bert(user_input)
+            sentiment_probs, result_message = interpret_sentiment(probabilities)
 
-        with tabs[0]:
-            st.markdown(
-                '''
-                  <div class="subtitle">일기 주제 추천</div>
-        
-                ''',unsafe_allow_html=True
-            )   
-            recommended_topics = recommend_topics(topics, num=6)
+            save_diary_to_db(st.session_state['logged_in_user'], datetime.now().strftime('%Y-%m-%d %H:%M:%S'), user_input, sentiment_probs, result_message)
 
-            topic_cols = st.columns(2)
+            st.session_state['sentiment_probs'] = sentiment_probs
+            st.session_state['result_message'] = result_message
+            st.session_state['user_input'] = user_input
 
-            for idx, topic in enumerate(recommended_topics):
-                with topic_cols[idx % 2]:
-                    st.markdown(f'''<div class='topic-card'>
-                                        <div class='topic'>
-                                            {topic}
-                                        </div>
-                                </div>''', unsafe_allow_html=True) 
-            st.write("")
+            st.success("분석이 완료되었습니다. '분석 결과' 탭을 확인하세요.")
 
-            user_input = st.text_area('',placeholder="여기에 일기를 작성해 주세요.", height=300)
+    with tabs[1]:
+        if 'sentiment_probs' in st.session_state:
+            st.write("### 분석 결과")
+            st.write("감정 확률 분포:")
+            for sentiment, prob in st.session_state['sentiment_probs'].items():
+                st.write(f"{sentiment}: {prob:.2%}")
+            st.write(f"선택된 메시지: {st.session_state['result_message']}")
             
-            if st.button("분석하기"):
-                probabilities = analyze_sentiment_bert(user_input)
-                sentiment_probs, result_message = interpret_sentiment(probabilities)
+            st.write("### 감정 분포")
+            custom_colors = ['#A8E6CF','#DCEDC1','#E0E0E0','#FFAAA5','#FF8B94']
+            fig = px.pie(values=list(st.session_state['sentiment_probs'].values()), names=list(st.session_state['sentiment_probs'].keys()), title="감정 분포", color_discrete_sequence=custom_colors)
+            st.plotly_chart(fig)
+            
+            found_words = find_sentiwords(st.session_state['user_input'], sentiword_dict)
+            if found_words:
+                negative_words = [word for word, score in found_words if score < 0]
+                positive_words = [word for word, score in found_words if score > 0]
 
-                save_diary_to_db(st.session_state['logged_in_user'], datetime.now().strftime('%Y-%m-%d %H:%M:%S'), user_input, sentiment_probs, result_message)
-
-                st.session_state['sentiment_probs'] = sentiment_probs
-                st.session_state['result_message'] = result_message
-                st.session_state['user_input'] = user_input
-
-                st.success("분석이 완료되었습니다. '분석 결과' 탭을 확인하세요.")
-
-        with tabs[1]:
-            if 'sentiment_probs' in st.session_state:
-                st.write("### 분석 결과")
-                st.write("감정 확률 분포:")
-                for sentiment, prob in st.session_state['sentiment_probs'].items():
-                    st.write(f"{sentiment}: {prob:.2%}")
-                st.write(f"선택된 메시지: {st.session_state['result_message']}")
-                
-                st.write("### 감정 분포")
-                # 원형 차트로 변경
-                custom_colors = ['#A8E6CF','#DCEDC1','#E0E0E0','#FFAAA5','#FF8B94']  # 원하는 색상 리스트
-                fig = px.pie(values=list(st.session_state['sentiment_probs'].values()), names=list(st.session_state['sentiment_probs'].keys()), title="감정 분포", color_discrete_sequence=custom_colors)
-                st.plotly_chart(fig)
-                
-                found_words = find_sentiwords(st.session_state['user_input'], sentiword_dict)
-                if found_words:
-                    negative_words = [word for word, score in found_words if score < 0]
-                    positive_words = [word for word, score in found_words if score > 0]
-
-                    st.write("### 일기에서 발견된 감성 단어")
-                    if negative_words:
-                        st.write(f"사용한 부정 단어: {', '.join(negative_words)}")
-                    else:
-                        st.write("사용한 부정 단어가 없습니다.")
-                    
-                    if positive_words:
-                        st.write(f"사용한 긍정 단어: {', '.join(positive_words)}")
-                    else:
-                        st.write("사용한 긍정 단어가 없습니다.")
+                st.write("### 일기에서 발견된 감성 단어")
+                if negative_words:
+                    st.write(f"사용한 부정 단어: {', '.join(negative_words)}")
                 else:
-                    st.write("일기에서 감성 단어를 찾을 수 없습니다.")
-            else:
-                st.write("아직 분석 결과가 없습니다. 먼저 '일기 작성' 탭에서 분석을 진행하세요.")
-
-        with tabs[2]:
-            st.write("### 지난 일기")
-            diary_data = load_diary_data(st.session_state['logged_in_user'])
-            
-            if not diary_data.empty:
-                selected_date = st.selectbox("날짜 선택", diary_data['Date'].unique())
+                    st.write("사용한 부정 단어가 없습니다.")
                 
-                if selected_date:
-                    entry = diary_data[diary_data['Date'] == selected_date].iloc[0]
-                    st.write(f"**일기 내용 ({selected_date})**:")
-                    st.write(entry['Diary'])
-                    st.write("**감정 확률 분포**:")
-                    sentiment_probs = eval(entry['Sentiment'])
-                    for sentiment, prob in sentiment_probs.items():
-                        st.write(f"{sentiment}: {prob:.2%}")
-                    st.write(f"**선택된 메시지**: {entry['Message']}")
+                if positive_words:
+                    st.write(f"사용한 긍정 단어: {', '.join(positive_words)}")
+                else:
+                    st.write("사용한 긍정 단어가 없습니다.")
             else:
-                st.write("아직 저장된 일기가 없습니다.")
-    else:
-        st.error("로그인 후 이용해주세요")
+                st.write("일기에서 감성 단어를 찾을 수 없습니다.")
+        else:
+            st.write("아직 분석 결과가 없습니다. 먼저 '일기 작성' 탭에서 분석을 진행하세요.")
+
+    with tabs[2]:
+        st.write("### 지난 일기")
+        diary_data = load_diary_data(st.session_state['logged_in_user'])
+        
+        if not diary_data.empty:
+            selected_date = st.selectbox("날짜 선택", diary_data['Date'].unique())
+            
+            if selected_date:
+                entry = diary_data[diary_data['Date'] == selected_date].iloc[0]
+                st.write(f"**일기 내용 ({selected_date})**:")
+                st.write(entry['Diary'])
+                st.write("**감정 확률 분포**:")
+                sentiment_probs = eval(entry['Sentiment'])
+                for sentiment, prob in sentiment_probs.items():
+                    st.write(f"{sentiment}: {prob:.2%}")
+                st.write(f"**선택된 메시지**: {entry['Message']}")
+        else:
+            st.write("아직 저장된 일기가 없습니다.")
+else:
+    st.error("로그인 후 이용해주세요")
 
 with st.sidebar:
     menu = option_menu("MomE", ['Home','Dashboard','Diary','육아 SNS','To do list', '하루 자가진단', 'LogOut'],
@@ -319,7 +307,4 @@ elif menu == 'To do list':
 elif menu =='하루 자가진단': 
     st.switch_page("pages/self_diagnosis.py")
 elif menu =='LogOut':
-    st.switch_page('dd1.py')
-
-if __name__ == "__main__":
-    main()
+    st.switch_page("dd1.py")
