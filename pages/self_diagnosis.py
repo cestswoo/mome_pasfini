@@ -1,50 +1,30 @@
+# self_diagnosis.py
 import sqlite3
 import streamlit as st
 from streamlit_option_menu import option_menu
 from datetime import datetime
 import pandas as pd
 import matplotlib.pyplot as plt
+from db_utils import get_connection, init_db
 
 # Initialize SQLite database
-def init_db():
-    conn = sqlite3.connect('self_diagnosis.db')
-    c = conn.cursor()
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS self_diagnosis (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user TEXT,
-            date TEXT,
-            q1 INTEGER,
-            q2 INTEGER,
-            q3 INTEGER,
-            q4 INTEGER,
-            q5 INTEGER,
-            q6 INTEGER,
-            q7 INTEGER,
-            q8 INTEGER,
-            q9 INTEGER,
-            q10 INTEGER,
-            total_score INTEGER
-        )
-    ''')
-    conn.commit()
-    conn.close()
+init_db()
+conn = get_connection()
+c = conn.cursor()
 
 # Function to save self-diagnosis result to the database
 def save_result(user, selected_date, scores, total_score):
-    conn = sqlite3.connect('self_diagnosis.db')
-    c = conn.cursor()
-    c.execute('''
-        INSERT INTO self_diagnosis (user, date, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, total_score)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (user, selected_date, scores['q1'], scores['q2'], scores['q3'], scores['q4'], scores['q5'], scores['q6'], scores['q7'], scores['q8'], scores['q9'], scores['q10'], total_score))
-    conn.commit()
-    conn.close()
+    try:
+        c.execute('''
+            INSERT INTO self_diagnosis (user, date, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, total_score)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (user, selected_date, scores['q1'], scores['q2'], scores['q3'], scores['q4'], scores['q5'], scores['q6'], scores['q7'], scores['q8'], scores['q9'], scores['q10'], total_score))
+        conn.commit()
+    except sqlite3.Error as e:
+        st.error(f"An error occurred: {e}")
 
 # Function to retrieve self-diagnosis results from the database
 def get_results(user):
-    conn = sqlite3.connect('self_diagnosis.db')
-    c = conn.cursor()
     c.execute('''
         SELECT date, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, total_score
         FROM self_diagnosis
@@ -52,7 +32,6 @@ def get_results(user):
         ORDER BY date DESC
     ''', (user,))
     results = c.fetchall()
-    conn.close()
     return results
 
 # Survey question function
@@ -242,13 +221,13 @@ with st.sidebar:
     if menu == 'Dashboard':
         st.switch_page("pages/dashboard_page.py")
     elif menu == 'Diary':
-        st.switch_page("pages/diary_page.py")
+        st.switch_page('pages/diary_page.py')
     elif menu == '육아 SNS':
-        st.switch_page("pages/SNS2.py")
+        st.switch_page('pages/SNS2.py')
     elif menu == 'Home':
-        st.switch_page("pages/home.py")
+        st.switch_page('pages/home.py')
     elif menu == 'To do list':
-        st.switch_page("pages/daily_schedule.py")
+        st.switch_page('pages/daily_schedule.py')
     elif menu == 'LogOut':
         st.switch_page("dd1.py")
 
