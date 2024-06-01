@@ -6,3 +6,4 @@ transformers[sentencepiece]
 torch
 matplotlib
 numpy
+plotly
