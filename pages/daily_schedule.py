@@ -1,7 +1,14 @@
+# daily_schedule.py
 import sqlite3
 import streamlit as st
 from datetime import datetime
 from streamlit_option_menu import option_menu
+from db_utils import get_connection, init_db
+
+# Initialize SQLite database
+init_db()
+conn = get_connection()
+c = conn.cursor()
 
 # 로그인 상태를 확인하는 함수
 def check_login():
@@ -32,48 +39,34 @@ with st.sidebar:
         st.session_state['logged_in'] = False
         st.switch_page("dd1.py")
 
-# 데이터베이스 초기화
-def init_db():
-    conn = sqlite3.connect('daily_schedule.db')
-    c = conn.cursor()
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS schedules (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            date TEXT,
-            time TEXT,
-            task TEXT,
-            comments TEXT
-        )
-    ''')
-    conn.commit()
-    conn.close()
-
 # 데이터 삽입 및 조회 함수
-def add_schedule(date, time, task, comments):
-    conn = sqlite3.connect('daily_schedule.db')
-    c = conn.cursor()
-    c.execute('INSERT INTO schedules (date, time, task, comments) VALUES (?, ?, ?, ?)',
-              (date, time, task, comments))
-    conn.commit()
-    conn.close()
+def add_schedule(user_id, date, time, task, comments):
+    try:
+        c.execute('INSERT INTO schedules (user_id, date, time, task, comments) VALUES (?, ?, ?, ?, ?)',
+                  (user_id, date, time, task, comments))
+        conn.commit()
+    except sqlite3.Error as e:
+        st.error(f"An error occurred: {e}")
 
-def get_schedules():
-    conn = sqlite3.connect('daily_schedule.db')
-    c = conn.cursor()
-    c.execute('SELECT * FROM schedules ORDER BY datetime(date) DESC, datetime(time) DESC')
+def get_schedules(user_id):
+    c.execute('SELECT * FROM schedules WHERE user_id = ? ORDER BY datetime(date) DESC, datetime(time) DESC', (user_id,))
     schedules = c.fetchall()
-    conn.close()
+    return schedules
+
+def get_schedules_by_date(user_id, date):
+    c.execute('SELECT * FROM schedules WHERE user_id = ? AND date = ? ORDER BY datetime(time) DESC', (user_id, date))
+    schedules = c.fetchall()
     return schedules
 
 def delete_schedule(schedule_id):
-    conn = sqlite3.connect('daily_schedule.db')
-    c = conn.cursor()
-    c.execute('DELETE FROM schedules WHERE id = ?', (schedule_id,))
-    conn.commit()
-    conn.close()
+    try:
+        c.execute('DELETE FROM schedules WHERE id = ?', (schedule_id,))
+        conn.commit()
+    except sqlite3.Error as e:
+        st.error(f"An error occurred: {e}")
 
 # 일정 작성 폼
-def schedule_form():
+def schedule_form(user_id):
     st.subheader("하루 일과 관리")
     date = st.date_input("날짜")
     time = st.time_input("시간")
@@ -82,43 +75,44 @@ def schedule_form():
 
     if st.button("일정 저장"):
         if task:
-            add_schedule(date.strftime("%Y-%m-%d"), time.strftime("%H:%M:%S"), task, comments)
+            add_schedule(user_id, date.strftime("%Y-%m-%d"), time.strftime("%H:%M:%S"), task, comments)
             st.success("일정이 저장되었습니다.")
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error("할 일을 입력해주세요.")
 
 # 일정 목록 표시
-def schedule_list():
-    st.subheader("하루 일과 목록")
-    schedules = get_schedules()
+def schedule_list(user_id, date):
+    st.subheader(f"{date}의 일과 목록")
+    schedules = get_schedules_by_date(user_id, date)
     for schedule in schedules:
         st.markdown(f"""
-        **날짜:** {schedule[1]}  
         **시간:** {schedule[2]}  
         **할 일:** {schedule[3]}  
         **메모:** {schedule[4]}
         """, unsafe_allow_html=True)
         if st.button("일정 삭제", key=f'delete_button_{schedule[0]}'):
             delete_schedule(schedule[0])
-            st.experimental_rerun()
+            st.rerun()
         st.write("---")
 
 # 일정 전체 삭제 함수
-def delete_all_schedules():
-    conn = sqlite3.connect('daily_schedule.db')
-    c = conn.cursor()
-    c.execute('DELETE FROM schedules')
-    conn.commit()
-    conn.close()
-    st.success("모든 일정이 삭제되었습니다.")
-    st.experimental_rerun()
+def delete_all_schedules(user_id):
+    try:
+        c.execute('DELETE FROM schedules WHERE user_id = ?', (user_id,))
+        conn.commit()
+        st.success("모든 일정이 삭제되었습니다.")
+        st.rerun()
+    except sqlite3.Error as e:
+        st.error(f"An error occurred: {e}")
 
 # Streamlit 앱 실행
 def main():
     # 로그인 상태 확인
     check_login()
     
+    user_id = st.session_state.get('user_id', 'guest')  # 각 사용자별 고유한 식별자
+
     # CSS 스타일 추가
     st.markdown(
         """
@@ -158,21 +152,21 @@ def main():
         unsafe_allow_html=True
     )
 
-    st.title("하루 일과 관리")
+    st.title("To do list")
+
+    # 일정 작성 폼
+    schedule_form(user_id)
+
+    # 캘린더 컴포넌트를 사용하여 날짜 선택
+    st.subheader("캘린더")
+    selected_date = st.date_input("날짜 선택", datetime.today())
 
     # 페이지 상단에 고정된 버튼
     if st.button("모든 일정 삭제", key='delete_all'):
-        delete_all_schedules()
+        delete_all_schedules(user_id)
 
-    # 페이지를 두 부분으로 나누기
-    col1, col2 = st.columns(2)
-
-    with col1:
-        schedule_form()
-
-    with col2:
-        schedule_list()
+    # 해당 일자의 일정 목록
+    schedule_list(user_id, selected_date.strftime("%Y-%m-%d"))
 
 if __name__ == "__main__":
-    init_db()
     main()
