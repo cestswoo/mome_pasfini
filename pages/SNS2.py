@@ -4,12 +4,10 @@ from streamlit_option_menu import option_menu
 from datetime import datetime
 from db_utils import get_connection, init_db
 
-# Initialize SQLite database
 init_db()
 conn = get_connection()
 c = conn.cursor()
 
-# 데이터베이스 함수 확장
 def create_tables():
     c.execute('CREATE TABLE IF NOT EXISTS poststable(username TEXT, image BLOB, post TEXT, timestamp TEXT, is_public INTEGER)')
     c.execute('CREATE TABLE IF NOT EXISTS likestable(post_id INTEGER, username TEXT)')
@@ -25,13 +23,11 @@ def add_post(username, image, post, is_public):
 
 def view_all_posts():
     c.execute('SELECT rowid, username, image, post, timestamp FROM poststable WHERE is_public = 1')
-    data = c.fetchall()
-    return data
+    return c.fetchall()
 
 def view_my_posts(user, is_public):
     c.execute('SELECT rowid, username, image, post, timestamp, is_public FROM poststable WHERE username = ? AND is_public = ?', (user, is_public))
-    data = c.fetchall()
-    return data
+    return c.fetchall()
 
 def upgrade_post_table():
     try:
@@ -39,13 +35,8 @@ def upgrade_post_table():
         c.execute('''ALTER TABLE poststable ADD COLUMN is_public INTEGER''')
         conn.commit()
     except sqlite3.OperationalError as e:
-        if "duplicate column name" in str(e):
-            print("Columns already exist.")
-        elif "no such table" in str(e):
-            create_tables()  # 테이블이 없을 경우 테이블 생성
-            upgrade_post_table()  # 다시 시도
-        else:
-            raise e
+        if "duplicate column name" not in str(e):
+            st.error(f"An error occurred: {e}")
 
 def like_post(post_id, username):
     try:
@@ -63,15 +54,14 @@ def unlike_post(post_id, username):
 
 def get_like_count(post_id):
     c.execute('SELECT COUNT(*) FROM likestable WHERE post_id = ?', (post_id,))
-    count = c.fetchone()[0]
-    return count
+    return c.fetchone()[0]
 
 def has_liked(post_id, username):
     c.execute('SELECT COUNT(*) FROM likestable WHERE post_id = ? AND username = ?', (post_id, username))
     return c.fetchone()[0] > 0
 
 def view(posts):
-    for post_id, username, image, post, timestamp in reversed(posts):  # 최신 게시물부터 표시하기 위해 reversed 사용
+    for post_id, username, image, post, timestamp in reversed(posts):
         st.markdown(f"<span style='font-weight: bold; font-size: 25px;'>{username}</span>", unsafe_allow_html=True)
 
         if image:
@@ -94,7 +84,7 @@ def view(posts):
         st.markdown("---")
 
 def viewmy(posts):
-    for post_id, username, image, post, timestamp, is_public in reversed(posts):  # 최신 게시물부터 표시하기 위해 reversed 사용
+    for post_id, username, image, post, timestamp, is_public in reversed(posts):
         st.markdown(f"**{username}**")
         if image:
             st.image(image, caption=username, use_column_width=True)
@@ -103,7 +93,7 @@ def viewmy(posts):
         col1, col2 = st.columns([1, 1])
         with col1:
             if st.button("수정", key=f"edit_post_{post_id}"):
-                edit_posts, edit_image, edit_timestamp, edit_ispublic = edit_post(post_id, image, post, timestamp, is_public)
+                edit_post(post_id, image, post, timestamp, is_public)
         with col2:
             if st.button("삭제", key=f"delete_post_{post_id}"):
                 delete_post(post_id)
@@ -125,14 +115,13 @@ def viewmy(posts):
         st.markdown("---")
 
 def edit_post(post_id, image, post, timestamp, is_public):
-    edited_image = None
     edited_post = st.text_area("게시물 수정", value=post, key=f"edit2_post_{post_id}")
     edited_is_public = st.checkbox("전체 공개로 수정", value=bool(is_public), key=f"edit_public_post_{post_id}")
     
     if image:
         edited_image = st.file_uploader("이미지를 수정하세요.", type=['png', 'jpg', 'jpeg'], 
                                         accept_multiple_files=False, key=f"edit_image_post_{post_id}")
-    if edited_image is None:
+    else:
         edited_image = image
 
     if st.button("저장", key=f"save_post_{post_id}"):
@@ -141,11 +130,13 @@ def edit_post(post_id, image, post, timestamp, is_public):
         update_post(post_id, new_post, new_is_public)
         st.success("게시물이 성공적으로 수정되었습니다.")
         st.rerun()
-    return post, image, timestamp, is_public
 
 def update_post(post_id, new_post, new_is_public):
-    c.execute('UPDATE poststable SET post = ?, is_public = ? WHERE rowid = ?', (new_post, new_is_public, post_id))
-    conn.commit()
+    try:
+        c.execute('UPDATE poststable SET post = ?, is_public = ? WHERE rowid = ?', (new_post, new_is_public, post_id))
+        conn.commit()
+    except sqlite3.Error as e:
+        st.error(f"An error occurred: {e}")
 
 def delete_post(post_id):
     try:
@@ -163,10 +154,8 @@ def main():
     upgrade_post_table()
     create_tables()
 
-    # 사용자 이름 가져오기
     global user
-    user = st.session_state.get('logged_in_user', '')  # session_state에서 사용자 이름 가져오기
-    print(user)
+    user = st.session_state.get('logged_in_user', '')
     if not user:
         st.error("로그인이 필요합니다.")
         return
@@ -213,7 +202,6 @@ with st.sidebar:
                             "title": {"font-weight": "bold"}  # MomE 글씨를 볼드체로 변경
                         })
 
-    # 선택된 메뉴에 따라 페이지 변경
     if menu == 'Dashboard':
         st.switch_page("pages/dashboard_page.py")
     elif menu == 'Diary':
