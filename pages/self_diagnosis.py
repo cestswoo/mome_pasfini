@@ -1,18 +1,16 @@
 # self_diagnosis.py
-import sqlite3
 import streamlit as st
+import sqlite3
 from streamlit_option_menu import option_menu
 from datetime import datetime
 import pandas as pd
 import matplotlib.pyplot as plt
 from db_utils import get_connection, init_db
 
-# Initialize SQLite database
 init_db()
 conn = get_connection()
 c = conn.cursor()
 
-# Function to save self-diagnosis result to the database
 def save_result(user, selected_date, scores, total_score):
     try:
         c.execute('''
@@ -23,7 +21,6 @@ def save_result(user, selected_date, scores, total_score):
     except sqlite3.Error as e:
         st.error(f"An error occurred: {e}")
 
-# Function to retrieve self-diagnosis results from the database
 def get_results(user):
     c.execute('''
         SELECT date, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, total_score
@@ -31,17 +28,13 @@ def get_results(user):
         WHERE user = ?
         ORDER BY date DESC
     ''', (user,))
-    results = c.fetchall()
-    return results
+    return c.fetchall()
 
-# Survey question function
 def question_block(text, answer_option, key):
     text_area = st.container()
     text_area.write(text)
-    answer = st.radio("", options=list(answer_option.keys()), key=key, help=" ")
-    return answer_option[answer]  # Return the integer score
+    return answer_option[st.radio("", options=list(answer_option.keys()), key=key, help=" ")]
 
-# Styling
 st.markdown(
     """
     <style>
@@ -60,13 +53,13 @@ st.markdown(
         }
         .intro-text {
             font-size: 20px;
-            margin-bottom: 20px;
+            margin-bottom: 20px.
         }
         .result {
             background-color: #FFC0CB;
             padding: 20px;
             border-radius: 10px;
-            margin-top: 20px;
+            margin-top: 20px.
         }
     </style>
     """,
@@ -74,26 +67,21 @@ st.markdown(
 )
 
 def main():
-    # Self-diagnosis title
     st.title("Self-diagnosis")
     st.markdown("<h6 style='margin-top: -8px'>| 산후 우울증에 대해 알아보고 자가 진단해보세요</h6>", unsafe_allow_html=True)
     st.write("")
 
-    user = st.session_state.get('logged_in_user', '')  # session_state에서 사용자 이름 가져오기
+    user = st.session_state.get('logged_in_user', '')
     if not user:
         st.error("로그인이 필요합니다.")
         return
     
-    # Self-diagnosis tabs
-    tab1, tab2 = st.tabs(['자가진단','결과'])
+    tab1, tab2 = st.tabs(['자가진단', '결과'])
 
-    # Self-diagnosis tab
     with tab1:
-        # Date selection
         selected_date = st.date_input("오늘의 날짜를 선택해 주세요", value=datetime.now())
         st.write("")
 
-        # Answer options
         answer_option = {
             '전혀 그렇지 않음': 0,
             '가끔 그렇음': 1,
@@ -101,7 +89,6 @@ def main():
             '대부분 그렇음': 3
         }
 
-        # Questions
         col1, col2 = st.columns(2)
         with col1:
             q1 = question_block(f"**1. 우스운 것이 눈에 잘 띄고 웃을 수 있었다.**", answer_option, key='q1')
@@ -117,11 +104,9 @@ def main():
             q8 = question_block(f"**8. 슬프거나 비참한 느낌이 들었다.**", answer_option, key='q8')
             q10 = question_block(f"**10. 나 자신을 해치는 생각이 들었다.**", answer_option, key='q10')
 
-        # Show results button
         if st.button("결과 확인하기"):
             st.subheader("결과")
 
-            # Save scores
             scores = {
                 'q1': q1,
                 'q2': q2,
@@ -135,10 +120,8 @@ def main():
                 'q10': q10
             }
 
-            # Calculate total score
             total_score = sum(scores.values())
 
-            # Display result message
             if total_score >= 13:
                 st.error("치료가 시급합니다. 이 경우 반드시 정신건강 전문가의 도움을 받으셔야 합니다. 산후우울증은 정서적 문제뿐만 아니라 뇌 신경전달 물질의 불균형과 관련이 있으며, 적절한 치료를 받는 것이 중요합니다. 전문가와 함께 산후우울에 대한 이야기를 나누고 적절한 치료를 받아보시기 바랍니다.")
             elif total_score >= 9:
@@ -146,17 +129,14 @@ def main():
             else:
                 st.success("정상 범위입니다. 산후 우울증 위험이 낮은 것으로 나타났습니다. 그러나 주변 지원 및 관리가 필요할 수 있습니다. 자신의 감정을 받아들이고 남편과 가족들과 나누며, 신체적 정서적 안정을 취할 수 있도록 함께 협력하고 노력해주세요.")
 
-            # Save result to database
             save_result(user, selected_date, scores, total_score)
 
-    # Record tab
     with tab2:
         results = get_results(user)
         if not results:
             st.error("데이터가 없습니다. 먼저 자가 진단을 진행해주세요.")
             st.stop()
 
-        # Define color labels
         color_labels = {
             0: ('#baef9d', '전혀 그렇지 않음 / 0점'),
             1: ('#e8ef9d', '가끔 그렇음 / 1점'),
@@ -164,7 +144,6 @@ def main():
             3: ('#efae9d', '대부분 그렇음 / 3점')
         }
 
-        # Show test result info
         col1, _, col2 = st.columns([1, 0.15, 1])
         with col1:
             st.subheader("Test Result")
@@ -182,12 +161,11 @@ def main():
                 st.write("")
         st.divider()
 
-        # Show test records
         st.subheader("Test Record")
         for record in results:
-            date = record[0]  # Changed index to 0
-            total_score = record[11]  # Changed index to 11
-            scores = record[1:11]  # Changed index range
+            date = record[0]
+            total_score = record[11]
+            scores = record[1:11]
             
             fig, ax = plt.subplots(figsize=(8, 0.5))
             for i, score in enumerate(scores):
@@ -207,7 +185,6 @@ def main():
             st.pyplot(fig)
             st.write("")
 
-# Sidebar menu
 with st.sidebar:
     menu = option_menu("MomE", ['Home', 'Dashboard', 'Diary', '육아 SNS', 'To do list', '하루 자가진단', 'LogOut'],
                         icons=['bi bi-house-fill', 'bi bi-grid-1x2-fill', 'book-half', 'Bi bi-star-fill', 'Bi bi-calendar-check', 'bi bi-capsule-pill', 'box-arrow-in-right'],
@@ -217,7 +194,6 @@ with st.sidebar:
                             "title": {"font-weight": "bold"}
                         })
 
-    # Page navigation
     if menu == 'Dashboard':
         st.switch_page("pages/dashboard_page.py")
     elif menu == 'Diary':
