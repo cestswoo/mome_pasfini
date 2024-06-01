@@ -1,8 +1,11 @@
+# main.py
 import streamlit as st
 import hashlib
-import sqlite3
+from db_utils import get_connection, init_db
 
-conn = sqlite3.connect('data.db')
+# Initialize database
+init_db()
+conn = get_connection()
 c = conn.cursor()
 
 # DB Functions
@@ -10,8 +13,11 @@ def create_usertable():
     c.execute('CREATE TABLE IF NOT EXISTS userstable(username TEXT,password TEXT)')
 
 def add_userdata(username,password):
-    c.execute('INSERT INTO userstable(username,password) VALUES (?,?)',(username,password))
-    conn.commit()
+    try:
+        c.execute('INSERT INTO userstable(username,password) VALUES (?,?)',(username,password))
+        conn.commit()
+    except sqlite3.Error as e:
+        st.error(f"An error occurred: {e}")
 
 def login_user(username,password):
     c.execute('SELECT * FROM userstable WHERE username =? AND password = ?',(username,password))
