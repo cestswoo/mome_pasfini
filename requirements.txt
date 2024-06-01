@@ -1,0 +1,8 @@
+streamlit
+streamlit-option-menu
+pandas
+Pillow
+transformers[sentencepiece]
+torch
+matplotlib
+numpy
